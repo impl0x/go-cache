@@ -2,6 +2,7 @@ package gocache
 
 import "sync"
 
+// Cache implementation with generic map and read write mutex
 type Cache[K comparable, V any] struct {
 	m  map[K]V
 	mu sync.RWMutex
