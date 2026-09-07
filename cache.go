@@ -6,7 +6,7 @@ type CacheConfig struct {
 	InitialMapCapacity int
 }
 
-var DefaultCacheConfig = CacheConfig{0}
+var DefaultCacheConfig = CacheConfig{} // Default config where the InitialMapCapacity is set to 0 same as the default map initiation in go
 
 // Cache implementation with generic map and read write mutex
 type Cache[K k, V v] struct {

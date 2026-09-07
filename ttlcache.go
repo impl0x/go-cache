@@ -83,6 +83,7 @@ func (tc *TTLCache[K, V]) LoopFunc(fn func(key K, value V, expiresAt time.Time) 
 	)
 }
 
+// cleaner function to clean up expired items on a set time interval
 func cleaner[K k, V v](tc *TTLCache[K, V], interval time.Duration) {
 	ticker := time.NewTicker(interval)
 	defer ticker.Stop()
