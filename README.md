@@ -28,7 +28,7 @@ func main() {
 }
 ```
 ## Documentation
-There are 2 types of caches as of now, the normal Cache and a TTLCache.
+There are 2 types of caches as of now, Cache and a TTLCache.
 ### Cache
 ```go
 package main
@@ -97,3 +97,9 @@ it is also possible to provide extra configuration using the constructor functio
 ### Extra functions 
 **`LoopFunc`**  
 This takes in a function which is provided the key and value, (and expiresAt in the case of TTLCache) on each iteration of the underlying map. So this can be used to track or find values via the Value instead of the key. Although not recommended to use if the cache is big as it takes O(N) time to loop over all the items in a map. The loop can be quit early by returning 0 from the function, which stops the iteration and is a signal that you have found what you are looking for. The loop manages its own read lock so it is not safe to call any other method from inside the function as it will cause deadlocks. Returning anything other than 0 signals the loop to continue and keep calling the function. 
+
+
+
+# End
+if you have any suggestions that you want to give me about this package, please feel free to email me on my personal email in my github profile. 
+This package was made to be a utility in my own projects and is not intended to be something big and used by everyone. So I am okay with it being simple as long as it fulfills my purpose of using it. License information is available on [LICENSE](LICENSE)
