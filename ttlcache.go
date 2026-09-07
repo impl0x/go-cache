@@ -8,7 +8,7 @@ type TTLCache[K k, V v] struct {
 	passiveDelete bool
 }
 
-type TTLCacheConfig struct{
+type TTLCacheConfig struct {
 	CacheConfig
 	PassiveDelete bool // Deletes an item on a Get call if it is expired, before the cleaner does it.
 }
@@ -35,6 +35,7 @@ func NewTTLCache[K k, V v](cleanupInterval time.Duration) *TTLCache[K, V] {
 // Instantiates a new ttl cache with the config provided
 func NewTTLCacheWithConfig[K k, V v](cleanupInterval time.Duration, config TTLCacheConfig) *TTLCache[K, V] {
 	tc := newTTLCache[K, V](config)
+	go cleaner(&tc, cleanupInterval)
 	return &tc
 }
 
