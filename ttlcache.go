@@ -1,6 +1,94 @@
 package gocache
 
+import "time"
+
 // Cache with expiration time of items, automatically clears items after it has expired
-type TTLCache[K comparable, V any] struct{
-	cache Cache[K,V]
+type TTLCache[K k, V v] struct {
+	Cache[K, ttlItem[V]]
+	passiveDelete bool
+}
+
+type TTLCacheConfig struct{
+	CacheConfig
+	PassiveDelete bool // Deletes an item on a Get call if it is expired, before the cleaner does it.
+}
+
+var DefaultTTLCacheConfig = TTLCacheConfig{DefaultCacheConfig, true} // uses DefaultCacheConfig for CacheConfig and true for passive delete
+
+// Wrapper for value V with a expiresAt field
+type ttlItem[V any] struct {
+	value     V
+	expiresAt time.Time
+}
+
+func newTTLCache[K k, V v](config TTLCacheConfig) TTLCache[K, V] {
+	return TTLCache[K, V]{newCache[K, ttlItem[V]](config.CacheConfig), config.PassiveDelete}
+}
+
+// Instantiates a new ttl cache using the generic types provided to this constructor function and [DefaultTTLCacheConfig]
+func NewTTLCache[K k, V v](cleanupInterval time.Duration) *TTLCache[K, V] {
+	tc := newTTLCache[K, V](DefaultTTLCacheConfig)
+	go cleaner(&tc, cleanupInterval)
+	return &tc
+}
+
+// Instantiates a new ttl cache with the config provided
+func NewTTLCacheWithConfig[K k, V v](cleanupInterval time.Duration, config TTLCacheConfig) *TTLCache[K, V] {
+	tc := newTTLCache[K, V](config)
+	return &tc
+}
+
+// Adds a key value pair to the cache
+func (tc *TTLCache[K, V]) Add(key K, value V, expiresAt time.Time) {
+	tc.Cache.Add(key, ttlItem[V]{value, expiresAt})
+}
+
+// Gets a value with the key provided, returning bool to convey wether the key exists, and the expiresAt time
+func (tc *TTLCache[K, V]) Get(key K) (V, bool, time.Time) {
+	r, ok := tc.Cache.Get(key)
+	if tc.passiveDelete && ok && r.expiresAt.Before(time.Now()) {
+
+	}
+	return r.value, ok, r.expiresAt
+}
+
+// Updates a value with the key provided. Does nothing if key doesn't exist
+//
+// expiresAt parameter is optional, supply time.Time{} if you want time to not be updated
+func (tc *TTLCache[K, V]) Update(key K, value V, expiresAt time.Time) {
+	item := ttlItem[V]{value: value}
+	if !expiresAt.IsZero() {
+		item.expiresAt = expiresAt
+	}
+	tc.Cache.Update(key, item)
+}
+
+// Loops over all the items in the list and passes the key, value and expiresAt to the function provided
+//
+// the function must return a uint8, which tells when to quit the loop
+//   - return 0 to exit the loop
+//   - return >= 1 to continue the loop
+//
+// the read lock unlocks itself only after this function call has ended, do not run any other methods on this instance of [TTLCache] inside the passed function fn
+func (tc *TTLCache[K, V]) LoopFunc(fn func(key K, value V, expiresAt time.Time) uint8) {
+	tc.Cache.LoopFunc(
+		func(key K, value ttlItem[V]) uint8 {
+			return fn(key, value.value, value.expiresAt)
+		},
+	)
+}
+
+func cleaner[K k, V v](tc *TTLCache[K, V], interval time.Duration) {
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for range ticker.C {
+		now := time.Now()
+		tc.Cache.mu.Lock()
+		for k, v := range tc.Cache.m {
+			if v.expiresAt.Before(now) {
+				delete(tc.Cache.m, k)
+			}
+		}
+		tc.Cache.mu.Unlock()
+	}
 }
