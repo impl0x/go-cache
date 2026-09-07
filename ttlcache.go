@@ -4,7 +4,7 @@ import "time"
 
 // Cache with expiration time of items, automatically clears items after it has expired
 type TTLCache[K k, V v] struct {
-	Cache[K, ttlItem[V]]
+	cache Cache[K, ttlItem[V]]
 	passiveDelete bool
 }
 
@@ -41,12 +41,12 @@ func NewTTLCacheWithConfig[K k, V v](cleanupInterval time.Duration, config TTLCa
 
 // Adds a key value pair to the cache
 func (tc *TTLCache[K, V]) Add(key K, value V, expiresAt time.Time) {
-	tc.Cache.Add(key, ttlItem[V]{value, expiresAt})
+	tc.cache.Add(key, ttlItem[V]{value, expiresAt})
 }
 
 // Gets a value with the key provided, returning bool to convey wether the key exists, and the expiresAt time
 func (tc *TTLCache[K, V]) Get(key K) (V, bool, time.Time) {
-	r, ok := tc.Cache.Get(key)
+	r, ok := tc.cache.Get(key)
 	if tc.passiveDelete && ok && r.expiresAt.Before(time.Now()) {
 
 	}
@@ -61,7 +61,11 @@ func (tc *TTLCache[K, V]) Update(key K, value V, expiresAt time.Time) {
 	if !expiresAt.IsZero() {
 		item.expiresAt = expiresAt
 	}
-	tc.Cache.Update(key, item)
+	tc.cache.Update(key, item)
+}
+
+func (tc *TTLCache[K, V]) Delete(key K){
+	tc.cache.Delete(key)
 }
 
 // Loops over all the items in the list and passes the key, value and expiresAt to the function provided
@@ -72,7 +76,7 @@ func (tc *TTLCache[K, V]) Update(key K, value V, expiresAt time.Time) {
 //
 // the read lock unlocks itself only after this function call has ended, do not run any other methods on this instance of [TTLCache] inside the passed function fn
 func (tc *TTLCache[K, V]) LoopFunc(fn func(key K, value V, expiresAt time.Time) uint8) {
-	tc.Cache.LoopFunc(
+	tc.cache.LoopFunc(
 		func(key K, value ttlItem[V]) uint8 {
 			return fn(key, value.value, value.expiresAt)
 		},
@@ -84,12 +88,12 @@ func cleaner[K k, V v](tc *TTLCache[K, V], interval time.Duration) {
 	defer ticker.Stop()
 	for range ticker.C {
 		now := time.Now()
-		tc.Cache.mu.Lock()
-		for k, v := range tc.Cache.m {
+		tc.cache.mu.Lock()
+		for k, v := range tc.cache.m {
 			if v.expiresAt.Before(now) {
-				delete(tc.Cache.m, k)
+				delete(tc.cache.m, k)
 			}
 		}
-		tc.Cache.mu.Unlock()
+		tc.cache.mu.Unlock()
 	}
 }
