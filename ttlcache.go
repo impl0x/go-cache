@@ -8,6 +8,7 @@ type TTLCache[K k, V v] struct {
 	passiveDelete bool
 }
 
+// Config for [TTLCache], reminder that this is a initialization config and when passed the value is set permanently for the instance of [TTLCache]
 type TTLCacheConfig struct {
 	CacheConfig
 	PassiveDelete bool // Deletes an item on a Get call if it is expired, before the cleaner does it.

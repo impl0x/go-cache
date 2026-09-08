@@ -2,8 +2,9 @@ package gocache
 
 import "sync"
 
+// Config for [Cache], reminder that this is a initialization config and when passed the value is set permanently for the instance of [Cache]
 type CacheConfig struct {
-	InitialMapCapacity int
+	InitialMapCapacity int // the initial map capacity used to make the map using make(map[K]V, InitialMapCapacity)
 }
 
 var DefaultCacheConfig = CacheConfig{} // Default config where the InitialMapCapacity is set to 0 same as the default map initiation in go
